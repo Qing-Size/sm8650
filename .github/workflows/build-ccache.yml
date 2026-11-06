@@ -27,6 +27,10 @@ jobs:
       SYNC_JOBS: '8'
       BUILD_JOBS: '2'
       CCACHE_DIR: /home/runner/.cache/ccache
+      # Disk knobs for the ~72 GiB hosted runner (see README):
+      YARP_SWAP_GIB: '8'
+      YARP_MIN_FREE_GIB: '25'
+      YARP_MIN_FREE_AFTER_SYNC_GIB: '4'
     steps:
       - name: Checkout build configuration
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
