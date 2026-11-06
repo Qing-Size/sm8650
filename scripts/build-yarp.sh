@@ -26,8 +26,9 @@ case "${1:-}" in
     df -h "${source_root}"
     du -sh .repo
     available_kib="$(df -Pk "${source_root}" | awk 'NR == 2 {print $4}')"
-    if (( available_kib < 15 * 1024 * 1024 )); then
-      echo '::error::Less than 15 GiB remains after source sync; refusing to fill the runner disk.'
+    min_free_after_sync_gib="${YARP_MIN_FREE_AFTER_SYNC_GIB:-4}"
+    if (( available_kib < min_free_after_sync_gib * 1024 * 1024 )); then
+      echo "::error::Only $((available_kib / 1024 / 1024)) GiB remains after source sync (want >= ${min_free_after_sync_gib} GiB); refusing to continue so diagnostic logs can still upload. Raise YARP_MIN_FREE_AFTER_SYNC_GIB to override."
       exit 1
     fi
     ;;

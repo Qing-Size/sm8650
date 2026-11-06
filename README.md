@@ -102,9 +102,23 @@ fastboot reboot recovery
 
 若 `device.revision` 填的是分支名而非 commit SHA，构建仍可用（日志会给出提示），产物里会额外输出 `device-revision.txt`（本次构建实际使用的设备树 commit）与 `source-manifest.xml`。把该 SHA 回填进 `sources.json` 即可锁定到确定版本，保证可复现。
 
-## Hosted runner 资源策略
+## Hosted runner 资源策略与磁盘旋钮
 
-GitHub 托管 runner 磁盘/内存有限：`prepare-runner.sh` 只在一次性 runner 上清理预装 SDK、分配 16 GiB swap，要求 sync 前可用空间 ≥ 95 GiB、sync 后 ≥ 15 GiB；构建以 2 jobs、单 Soong bootstrap、`SOONG_GOMEMLIMIT=8GiB` 运行，systemd scope 限内存 13 GiB / swap 12 GiB，`resource-report.sh` 每分钟写资源快照，磁盘不足 3 GiB 时主动停止以便保留诊断日志。
+GitHub 托管 runner（ubuntu-24.04）磁盘约 72 GiB、内存约 8 GiB；prepare-runner.sh 会清理预装 SDK 并分配 swap，构建以 2 jobs、单 Soong bootstrap、SOONG_GOMEMLIMIT=8GiB 运行，systemd scope 限内存 13 GiB / swap，resource-report.sh 每分钟写资源快照，另附全盘 du 诊断。
+
+所有磁盘阈值都可以在 workflow 的 env 里直接调：
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| YARP_SWAP_GIB | 8 | swap 文件大小（GiB）。swap 文件占的就是构建磁盘，内存够用时调小可多省磁盘 |
+| YARP_MIN_FREE_GIB | 25 | swap 分配后要求的剩余磁盘（GiB），不足则在准备阶段失败 |
+| YARP_MIN_FREE_AFTER_SYNC_GIB | 4 | 源码同步后要求的剩余磁盘（GiB），不足则中止以保留诊断日志 |
+| SYNC_JOBS / BUILD_JOBS | 8 / 2 | repo 同步并发 / 编译并发 |
+
+> 排错：
+> - 日志出现 "Less than 95 GiB is available..." —— 这是旧版阈值，已改为可配置（默认 25 GiB，适配 72 GiB runner），同步最新的脚本即可；
+> - repo sync 阶段磁盘写满（ENOSPC）—— 该 runner 放不下源码树，换更大磁盘的 runner（改 runs-on）或把 SYNC_JOBS 调小后重试；
+> - 编译阶段 OOM / runner 掉线 —— 适当调大 YARP_SWAP_GIB 或把 BUILD_JOBS 降为 1。
 
 ## 致谢
 
