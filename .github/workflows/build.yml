@@ -19,8 +19,8 @@ jobs:
         shell: bash
     env:
       YARP_SOURCE_DIR: /build/yarp
-      SYNC_JOBS: '8'
-      BUILD_JOBS: '2'
+      SYNC_JOBS: '16'
+      BUILD_JOBS: '4'
       # Disk knobs for the ~72 GiB hosted runner (see README):
       YARP_APPLY_MINIMAL_TRIM: '1'
       YARP_SWAP_GIB: '8'
