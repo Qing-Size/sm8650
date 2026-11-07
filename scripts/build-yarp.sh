@@ -60,7 +60,7 @@ case "${1:-}" in
     export GOMEMLIMIT=8GiB
     export GOGC=50
     export GOMAXPROCS=2
-    export SOONG_UI_NINJA_ARGS=-j1
+    export SOONG_UI_NINJA_ARGS="-j1 -k 100"
     export NINJA_HIGHMEM_NUM_JOBS=1
     set +u
     source build/envsetup.sh
