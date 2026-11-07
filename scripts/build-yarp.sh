@@ -59,9 +59,9 @@ case "${1:-}" in
     export SOONG_GOMEMLIMIT=8GiB
     export GOMEMLIMIT=8GiB
     export GOGC=50
-    export GOMAXPROCS=2
-    export SOONG_UI_NINJA_ARGS="-j1 -k 100"
-    export NINJA_HIGHMEM_NUM_JOBS=1
+    export GOMAXPROCS=4
+    export SOONG_UI_NINJA_ARGS="-j${BUILD_JOBS:-4} -k 100"
+    export NINJA_HIGHMEM_NUM_JOBS=2
     set +u
     source build/envsetup.sh
     lunch twrp_houji
