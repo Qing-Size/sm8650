@@ -12,4 +12,6 @@
     <keep-project path="system/bpfprogs" />
     <!-- eSE communication library used by the native OMAPI service (decryption) -->
     <keep-project path="external/libese" />
+    <!-- bpf_headers (needed by libhealthloop) lives in the Connectivity module -->
+    <keep-project path="packages/modules/Connectivity" />
 </manifest>
