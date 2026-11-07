@@ -21,6 +21,7 @@ case "${1:-}" in
     # remove-minimal.xml plus scripts/yarp-trim-extra.xml, filtered against
     # the resolved manifest so unknown entries are skipped, never fatal.
     if [ "${YARP_APPLY_MINIMAL_TRIM:-1}" = "1" ]; then
+      cp "${builder_root}/scripts/yarp-trim-keep.xml" "${source_root}/.repo/local_manifests/yarp-trim-keep.xml"
       python3 "${builder_root}/scripts/apply-trim.py" "${source_root}" "${builder_root}/scripts/yarp-trim-extra.xml"
     else
       echo '::warning::YARP_APPLY_MINIMAL_TRIM=0: syncing the full manifest; this will not fit on a 72 GiB runner.'
