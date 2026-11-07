@@ -24,8 +24,8 @@ jobs:
         shell: bash
     env:
       YARP_SOURCE_DIR: /build/yarp
-      SYNC_JOBS: '8'
-      BUILD_JOBS: '2'
+      SYNC_JOBS: '16'
+      BUILD_JOBS: '4'
       CCACHE_DIR: /home/runner/.cache/ccache
       # Disk knobs for the ~72 GiB hosted runner (see README):
       YARP_APPLY_MINIMAL_TRIM: '1'
@@ -53,7 +53,7 @@ jobs:
           mkdir -p logs dist
 
       - name: Restore ccache storage
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: /home/runner/.cache/ccache
           key: yarp-houji-ccache-${{ github.run_id }}
@@ -120,6 +120,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+
+      - name: Save ccache storage
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/.cache/ccache
+          key: yarp-houji-ccache-${{ github.run_id }}
 
       - name: Surface failure context as annotations
         if: failure()
