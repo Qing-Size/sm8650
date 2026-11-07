@@ -59,9 +59,13 @@ case "${1:-}" in
     export SOONG_GOMEMLIMIT=8GiB
     export GOMEMLIMIT=8GiB
     export GOGC=50
+    # Speed profile for the 15 GiB hosted runner. These override the
+    # conservative BUILD_JOBS the workflow passes down.
+    jobs="${YARP_COMPILE_JOBS:-4}"
     export GOMAXPROCS=4
-    export SOONG_UI_NINJA_ARGS="-j${BUILD_JOBS:-4} -k 100"
+    export SOONG_UI_NINJA_ARGS="-j${jobs} -k 100"
     export NINJA_HIGHMEM_NUM_JOBS=2
+    BUILD_JOBS="${jobs}"
     set +u
     source build/envsetup.sh
     lunch twrp_houji
