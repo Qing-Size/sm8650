@@ -7,4 +7,9 @@
     <keep-project path="art" />
     <keep-project path="prebuilts/sdk" />
     <keep-project path="prebuilts/module_sdk/" />
+    <!-- libhealthloop needs bpf_headers -->
+    <keep-project path="system/bpf" />
+    <keep-project path="system/bpfprogs" />
+    <!-- eSE communication library used by the native OMAPI service (decryption) -->
+    <keep-project path="external/libese" />
 </manifest>
