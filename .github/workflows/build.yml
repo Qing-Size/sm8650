@@ -22,9 +22,10 @@ jobs:
       SYNC_JOBS: '8'
       BUILD_JOBS: '2'
       # Disk knobs for the ~72 GiB hosted runner (see README):
+      YARP_APPLY_MINIMAL_TRIM: '1'
       YARP_SWAP_GIB: '8'
       YARP_MIN_FREE_GIB: '25'
-      YARP_MIN_FREE_AFTER_SYNC_GIB: '4'
+      YARP_MIN_FREE_AFTER_SYNC_GIB: '5'
     steps:
       - name: Checkout build configuration
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,7 +47,20 @@ jobs:
           mkdir -p logs dist
 
       - name: Sync pinned YARP and houji sources
-        run: bash scripts/build-yarp.sh sync 2>&1 | tee logs/sync.log
+        run: |
+          (while true; do date -u; df -h /; sleep 30; done) > logs/df-watch.log 2>&1 &
+          watcher_pid=$!
+          trap 'kill "$watcher_pid" 2>/dev/null || true' EXIT
+          bash scripts/build-yarp.sh sync 2>&1 | tee logs/sync.log
+
+      - name: Allocate swap for the compile phase
+        run: |
+          sudo fallocate -l "${YARP_SWAP_GIB:-8}G" /yarp-swapfile
+          sudo chmod 600 /yarp-swapfile
+          sudo mkswap /yarp-swapfile
+          sudo swapon /yarp-swapfile
+          free -h
+          df -h /
 
       - name: Build recovery image
         run: |
