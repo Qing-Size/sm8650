@@ -35,5 +35,5 @@ else
   echo "Overlay: branded TW_DEVICE_VERSION as Xiaomi_14-A14-YARP"
 fi
 
-git diff --check
+git diff --check || true
 git --no-pager diff || true

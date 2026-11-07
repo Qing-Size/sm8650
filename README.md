@@ -102,23 +102,27 @@ fastboot reboot recovery
 
 若 `device.revision` 填的是分支名而非 commit SHA，构建仍可用（日志会给出提示），产物里会额外输出 `device-revision.txt`（本次构建实际使用的设备树 commit）与 `source-manifest.xml`。把该 SHA 回填进 `sources.json` 即可锁定到确定版本，保证可复现。
 
-## Hosted runner 资源策略与磁盘旋钮
+## 磁盘策略与旋钮（72 GiB runner 适配）
 
-GitHub 托管 runner（ubuntu-24.04）磁盘约 72 GiB、内存约 8 GiB；prepare-runner.sh 会清理预装 SDK 并分配 swap，构建以 2 jobs、单 Soong bootstrap、SOONG_GOMEMLIMIT=8GiB 运行，systemd scope 限内存 13 GiB / swap，resource-report.sh 每分钟写资源快照，另附全盘 du 诊断。
+TWRP-Test 的 manifest 是接近全量的 AOSP 清单（700+ 项目），全量 sync 需要约 90+ GiB，标准 runner（约 72 GiB 磁盘）装不下——直接 repo sync 会以 "No space left on device" 失败。本仓库的适配策略：
 
-所有磁盘阈值都可以在 workflow 的 env 里直接调：
+1. **官方最小化裁剪**：sync 前把 manifest 仓库自带的 remove-minimal.xml（300+ 项目的裁剪清单）+ 本仓库的 yarp-trim-extra.xml（netsim/ART/蓝牙等 recovery 用不到的项目）安装到 .repo/local_manifests/。scripts/apply-trim.py 会先把候选项与实际 manifest 求交集——**清单里不存在的条目自动跳过、绝不报错**，可放心跨版本维护；
+2. **sync 期不占 swap**：swap 文件占的是构建磁盘，改为编译前才分配（sync 全程可用磁盘最大化）；
+3. **sync 后清理 git 对象库**：编译只需要检出的文件，.repo/projects 与 .repo/project-objects 在校验、overlay、版本记录完成后直接删除，把磁盘还给编译；
+4. **磁盘遥测**：sync 期间每 30 秒记录 df 快照（logs/df-watch.log），prepare-runner 附全盘 du 报告——即使失败也能看清磁盘去哪了。
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
-| YARP_SWAP_GIB | 8 | swap 文件大小（GiB）。swap 文件占的就是构建磁盘，内存够用时调小可多省磁盘 |
-| YARP_MIN_FREE_GIB | 25 | swap 分配后要求的剩余磁盘（GiB），不足则在准备阶段失败 |
-| YARP_MIN_FREE_AFTER_SYNC_GIB | 4 | 源码同步后要求的剩余磁盘（GiB），不足则中止以保留诊断日志 |
+| YARP_APPLY_MINIMAL_TRIM | 1 | 是否应用最小化裁剪（0 = 全量 sync，大 runner 才用） |
+| YARP_SWAP_GIB | 8 | 编译阶段的 swap 大小（GiB），在 sync 完成后才分配 |
+| YARP_MIN_FREE_GIB | 25 | 清理后、sync 前要求的剩余磁盘（GiB） |
+| YARP_MIN_FREE_AFTER_SYNC_GIB | 5 | sync + 对象库清理后要求的剩余磁盘（GiB），不足则中止以保留日志 |
 | SYNC_JOBS / BUILD_JOBS | 8 / 2 | repo 同步并发 / 编译并发 |
 
 > 排错：
-> - 日志出现 "Less than 95 GiB is available..." —— 这是旧版阈值，已改为可配置（默认 25 GiB，适配 72 GiB runner），同步最新的脚本即可；
-> - repo sync 阶段磁盘写满（ENOSPC）—— 该 runner 放不下源码树，换更大磁盘的 runner（改 runs-on）或把 SYNC_JOBS 调小后重试；
-> - 编译阶段 OOM / runner 掉线 —— 适当调大 YARP_SWAP_GIB 或把 BUILD_JOBS 降为 1。
+> - "No space left on device"（Errno 28）—— 先看 logs/df-watch.log 和 prepare-runner 的 du 报告确认磁盘去向；若 sync 仍放不下，在 yarp-trim-extra.xml 加裁剪项（会自动过滤不存在的条目），或换更大磁盘的 runner（改 runs-on）；
+> - "Less than 95 GiB is available..." —— 旧版脚本的固定阈值，现版本已改为 YARP_MIN_FREE_GIB 旋钮；
+> - 编译阶段 OOM / runner 掉线 —— 调大 YARP_SWAP_GIB 或把 BUILD_JOBS 降为 1。
 
 ## 致谢
 
