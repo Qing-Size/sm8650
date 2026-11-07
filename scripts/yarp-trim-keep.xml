@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Projects that must NOT be trimmed even if a candidate file lists them.
+     Trailing "/" matches a path prefix. The Soong API-compat tracking of kept
+     java libraries (libcore's art.module.public.api etc.) needs the ART API
+     filegroups from these projects. -->
+<manifest>
+    <keep-project path="art" />
+    <keep-project path="prebuilts/sdk" />
+    <keep-project path="prebuilts/module_sdk/" />
+</manifest>
