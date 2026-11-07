@@ -35,5 +35,19 @@ else
   echo "Overlay: branded TW_DEVICE_VERSION as Xiaomi_14-A14-YARP"
 fi
 
+# The device tree predates android16 (twrp-12.1 era): sanitize product vars
+# that the android16 product config hard-rejects.
+device_mk="device.mk"
+if [ -f "${device_mk}" ]; then
+  if grep -q '^PRODUCT_TARGET_VNDK_VERSION' "${device_mk}"; then
+    sed -i 's/^PRODUCT_TARGET_VNDK_VERSION.*/# removed by YARP overlay: VNDK was removed in android16/' "${device_mk}"
+    echo "Overlay: removed PRODUCT_TARGET_VNDK_VERSION (VNDK is gone in android16)"
+  fi
+  if grep -q '^PRODUCT_SHIPPING_API_LEVEL := 3[0-5]$' "${device_mk}"; then
+    sed -i 's/^PRODUCT_SHIPPING_API_LEVEL := 3[0-5]$/PRODUCT_SHIPPING_API_LEVEL := 36/' "${device_mk}"
+    echo "Overlay: bumped PRODUCT_SHIPPING_API_LEVEL to 36 for android16"
+  fi
+fi
+
 git diff --check || true
 git --no-pager diff || true
