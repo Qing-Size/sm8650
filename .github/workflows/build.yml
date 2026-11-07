@@ -67,12 +67,10 @@ jobs:
           bash scripts/resource-report.sh > >(tee logs/resources.log) 2>&1 &
           reporter_pid=$!
           trap 'kill "$reporter_pid" 2>/dev/null || true' EXIT
-          sudo systemd-run --scope --unit=yarp-build \
-            --property=MemoryHigh=11G --property=MemoryMax=13G \
-            --property=MemorySwapMax=12G --property=CPUWeight=50 \
-            runuser -u "$(id -un)" -- env \
-              YARP_SOURCE_DIR="$YARP_SOURCE_DIR" BUILD_JOBS="$BUILD_JOBS" \
-              nice -n 10 bash "$GITHUB_WORKSPACE/scripts/build-yarp.sh" build \
+          bash scripts/run-capped.sh env \
+            YARP_SOURCE_DIR="$YARP_SOURCE_DIR" BUILD_JOBS="$BUILD_JOBS" \
+            CCACHE_DIR="${CCACHE_DIR:-}" \
+            nice -n 10 bash "$GITHUB_WORKSPACE/scripts/build-yarp.sh" build \
             2>&1 | tee logs/build.log
 
       - name: Verify and package recovery image
@@ -107,3 +105,13 @@ jobs:
           path: logs/
           if-no-files-found: ignore
           retention-days: 14
+
+
+      - name: Surface failure context as annotations
+        if: failure()
+        run: |
+          for f in logs/build.log logs/sync.log logs/resources.log; do
+            [ -s "$f" ] || continue
+            msg="$(tr -d '\r' < "$f" | tail -n 40 | sed 's/%/%25/g' | sed -z 's/\n/%0A/g')"
+            echo "::error title=$(basename "$f") tail::${msg:0:50000}"
+          done
