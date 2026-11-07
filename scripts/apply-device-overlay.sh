@@ -49,6 +49,24 @@ for mk in BoardConfig.mk device.mk twrp_houji.mk Android.mk prebuilt/Android.mk;
   done
 done
 
+# The device tree ships an empty kernel stub (kernel_empty), but the android16
+# VINTF check extracts kernel configs/release from TARGET_PREBUILT_KERNEL.
+# Fetch the pinned real houji kernel and point the build at it. The recovery
+# image stays ramdisk-only (BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE).
+kernel_rev="c9911a5ba8c206f25cc0c4e8a8b30dcfc88a4dce"
+if [ ! -s prebuilt/kernel_real ]; then
+  echo "Overlay: fetching pinned houji kernel (${kernel_rev:0:12})"
+  git clone --depth=1 https://github.com/lolipuru/device_xiaomi_houji-kernel /tmp/houji-kernel 2>/dev/null || true
+  git -C /tmp/houji-kernel fetch --depth=1 origin "${kernel_rev}" 2>/dev/null || true
+  git -C /tmp/houji-kernel checkout -q "${kernel_rev}" 2>/dev/null || true
+  cp /tmp/houji-kernel/kernel prebuilt/kernel_real
+  rm -rf /tmp/houji-kernel
+fi
+if grep -q 'TARGET_PREBUILT_KERNEL.*kernel_empty' "${board}"; then
+  sed -i 's|TARGET_PREBUILT_KERNEL.*kernel_empty|TARGET_PREBUILT_KERNEL := $(DEVICE_PATH)/prebuilt/kernel_real|' "${board}"
+  echo "Overlay: TARGET_PREBUILT_KERNEL -> prebuilt/kernel_real"
+fi
+
 # VNDK is gone in android16 entirely.
 if grep -q '^PRODUCT_TARGET_VNDK_VERSION' device.mk 2>/dev/null; then
   sed -i 's/^PRODUCT_TARGET_VNDK_VERSION.*/# removed by YARP overlay: VNDK was removed in android16/' device.mk
