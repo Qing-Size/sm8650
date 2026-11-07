@@ -70,6 +70,27 @@ def load_candidates(file):
         yield node.get("name", ""), node.get("path", "")
 
 
+def load_keeps(file):
+    """Paths (trailing '/' = prefix) or names that must never be removed."""
+    keeps = []
+    root = ET.parse(file).getroot()
+    for node in root.iter("keep-project"):
+        key = node.get("path") or node.get("name", "")
+        if key:
+            keeps.append(key)
+    return keeps
+
+
+def is_kept(name, path, keeps):
+    for key in keeps:
+        if key.endswith("/"):
+            if path.startswith(key) or (name + "/").startswith(key):
+                return True
+        elif name == key or path == key:
+            return True
+    return False
+
+
 def main():
     source = Path(sys.argv[1])
     extra_files = [Path(p) for p in sys.argv[2:]]
@@ -86,16 +107,27 @@ def main():
         print(f"WARN: {official} not found; trimming with extras only")
     candidates += [f for f in extra_files if f.is_file()]
 
+    keeps = []
+    keep_file = source / ".repo/local_manifests/yarp-trim-keep.xml"
+    if keep_file.is_file():
+        keeps = load_keeps(keep_file)
+
     wanted = {}
     missing = []
+    kept_back = []
     for file in candidates:
         for name, path in load_candidates(file):
             if name and name in projects:
-                wanted[name] = path
+                target_name, target_path = name, projects[name]
             elif path and path in by_path:
-                wanted[by_path[path]] = path
+                target_name, target_path = by_path[path], path
             else:
                 missing.append(name or path)
+                continue
+            if is_kept(target_name, target_path, keeps):
+                kept_back.append(target_name)
+                continue
+            wanted[target_name] = target_path
 
     out = ET.Element("manifest")
     for name in sorted(wanted):
@@ -104,7 +136,9 @@ def main():
     ET.ElementTree(out).write(target, encoding="utf-8", xml_declaration=True)
 
     print(f"trim: {len(projects)} resolved manifest projects, removing {len(wanted)}, "
-          f"{len(missing)} candidate(s) not in manifest")
+          f"{len(missing)} candidate(s) not in manifest, {len(kept_back)} kept back")
+    if kept_back:
+        print("trim: kept (keep-list): " + ", ".join(sorted(set(kept_back))[:20]))
     if missing:
         print("trim: skipped (not in manifest): " + ", ".join(missing[:20]))
 
